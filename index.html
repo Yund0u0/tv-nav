@@ -1,0 +1,291 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="看剧导航">
+<meta name="theme-color" content="#e84855">
+<meta name="description" content="免费看剧网站导航 - 给妈妈用的">
+<title>📺 看剧导航</title>
+<link rel="manifest" href="manifest.json">
+<style>
+  *,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+  html{height:100%}
+  body{
+    font-family:-apple-system,BlinkMacSystemFont,"PingFang SC","Microsoft YaHei",sans-serif;
+    background:#fff5f5;min-height:100vh;min-height:100dvh;
+    padding-bottom:calc(20px + env(safe-area-inset-bottom,0px));
+    -webkit-tap-highlight-color:transparent;-webkit-font-smoothing:antialiased;
+    user-select:none;-webkit-user-select:none
+  }
+  .page{padding:16px}
+
+  /* ─ Hero ─ */
+  .hero{
+    background:linear-gradient(135deg,#e84855,#ff6b6b);border-radius:20px;
+    padding:28px 20px 24px;color:#fff;margin-bottom:20px;
+    padding-top:calc(28px + env(safe-area-inset-top,0px))
+  }
+  .hero h1{font-size:28px;font-weight:800;letter-spacing:1px}
+  .hero p{font-size:16px;opacity:.85;margin-top:6px;font-weight:500}
+
+  /* ─ Category Tabs ─ */
+  .tabs{
+    display:flex;gap:8px;overflow-x:auto;padding:4px 0 12px;
+    scrollbar-width:none;-ms-overflow-style:none
+  }
+  .tabs::-webkit-scrollbar{display:none}
+  .tab{
+    flex-shrink:0;padding:10px 20px;border-radius:24px;border:none;
+    font-size:16px;font-weight:600;cursor:pointer;background:#fff;
+    color:#666;box-shadow:0 2px 8px rgba(0,0,0,.06);
+    transition:all .2s;font-family:inherit;min-height:44px
+  }
+  .tab:active{transform:scale(.95)}
+  .tab.active{background:#e84855;color:#fff;box-shadow:0 3px 12px rgba(232,72,85,.3)}
+
+  /* ─ Site Cards ─ */
+  .grid{display:flex;flex-direction:column;gap:12px}
+  .empty{text-align:center;color:#bbb;font-size:18px;padding:60px 20px}
+  .empty .icon{font-size:56px;display:block;margin-bottom:12px}
+
+  .card{
+    background:#fff;border-radius:16px;padding:18px 16px;
+    box-shadow:0 2px 10px rgba(0,0,0,.05);
+    display:flex;align-items:center;gap:14px;
+    cursor:pointer;transition:all .15s;text-decoration:none;color:inherit;
+    border:2px solid transparent
+  }
+  .card:active{transform:scale(.98);border-color:#ffcccc}
+  .card-icon{
+    width:52px;height:52px;border-radius:14px;
+    display:flex;align-items:center;justify-content:center;
+    font-size:26px;flex-shrink:0;font-weight:700
+  }
+  .card-body{flex:1;min-width:0}
+  .card-name{font-size:20px;font-weight:700;color:#222;line-height:1.3}
+  .card-desc{font-size:15px;color:#999;margin-top:4px;line-height:1.4}
+  .card-arrow{font-size:22px;color:#ccc;flex-shrink:0}
+
+  /* ─ Admin (hidden by default) ─ */
+  .admin-toggle{
+    position:fixed;bottom:calc(20px + env(safe-area-inset-bottom,0px));left:20px;
+    width:44px;height:44px;border-radius:22px;background:#fff;
+    border:2px solid #eee;font-size:20px;cursor:pointer;z-index:80;
+    display:flex;align-items:center;justify-content:center;
+    opacity:.5;transition:opacity .2s
+  }
+  .admin-toggle:active{opacity:1}
+
+  .admin-panel{
+    position:fixed;inset:0;background:rgba(0,0,0,.5);z-index:200;
+    display:flex;align-items:flex-end;animation:fadeIn .2s
+  }
+  .admin-panel.hidden{display:none}
+  @keyframes fadeIn{from{opacity:0}to{opacity:1}}
+  @keyframes slideUp{from{transform:translateY(100%)}to{transform:translateY(0)}}
+
+  .admin-box{
+    background:#fff;border-radius:20px 20px 0 0;
+    padding:24px 16px calc(24px + env(safe-area-inset-bottom,0px));
+    width:100%;max-height:85vh;overflow-y:auto;animation:slideUp .25s ease-out
+  }
+  .admin-box h3{font-size:18px;font-weight:700;margin-bottom:16px}
+  .admin-box label{display:block;font-size:14px;color:#999;margin-bottom:4px;font-weight:600}
+  .admin-box input,.admin-box select{
+    width:100%;padding:12px 14px;border-radius:12px;border:1.5px solid #e8e8e8;
+    font-size:16px;margin-bottom:12px;background:#fafafa;outline:none;
+    font-family:inherit;color:#222
+  }
+  .admin-box input:focus,.admin-box select:focus{border-color:#e84855;background:#fff}
+  .admin-btns{display:flex;gap:8px;margin-top:4px}
+  .admin-btns button{
+    flex:1;padding:14px 0;border-radius:14px;border:none;
+    font-size:16px;font-weight:700;cursor:pointer;font-family:inherit
+  }
+  .btn-save{background:#e84855;color:#fff}
+  .btn-save:active{background:#d13542}
+  .btn-close-ad{background:#f5f5f5;color:#888}
+
+  .site-row{
+    display:flex;align-items:center;gap:8px;padding:10px 0;
+    border-bottom:1px solid #f0f0f0
+  }
+  .site-row span{flex:1;font-size:15px;font-weight:600}
+  .site-row .del-btn{
+    background:#fff0f0;border:none;border-radius:8px;padding:6px 14px;
+    color:#e84855;font-size:14px;font-weight:700;cursor:pointer
+  }
+  .del-btn:active{background:#ffe0e0}
+
+  .add-row{display:flex;gap:8px;margin-top:12px}
+  .add-row input{flex:1;margin-bottom:0}
+  .add-row button{
+    padding:12px 18px;border-radius:12px;border:none;
+    background:#e84855;color:#fff;font-size:15px;font-weight:700;cursor:pointer
+  }
+
+  .toast{
+    position:fixed;top:calc(20px + env(safe-area-inset-top,0px));left:50%;
+    transform:translateX(-50%);background:#333;color:#fff;padding:10px 22px;
+    border-radius:22px;font-size:16px;font-weight:600;z-index:300;
+    animation:toastIn .3s,toastOut .3s 1.8s forwards;pointer-events:none
+  }
+  @keyframes toastIn{from{opacity:0;transform:translateX(-50%) translateY(-10px)}to{opacity:1;transform:translateX(-50%) translateY(0)}}
+  @keyframes toastOut{from{opacity:1}to{opacity:0}}
+
+  /* Category colors */
+  .cat-国产剧{background:#fff0f0;color:#e84855}
+  .cat-美剧{background:#f0f5ff;color:#1677ff}
+  .cat-韩剧{background:#fff7e6;color:#fa8c16}
+  .cat-日剧{background:#f0fff4;color:#52c41a}
+  .cat-动漫{background:#f9f0ff;color:#722ed1}
+  .cat-综艺{background:#fff0f6;color:#eb2f96}
+  .cat-电影{background:#e6fffb;color:#13c2c2}
+  .cat-其他{background:#f5f5f5;color:#666}
+</style>
+</head>
+<body>
+
+<div class="page">
+  <div class="hero">
+    <h1>📺 看剧导航</h1>
+    <p>想看什么剧？点一下就能看</p>
+  </div>
+
+  <div class="tabs" id="tabs"></div>
+  <div class="grid" id="grid"></div>
+</div>
+
+<!-- 管理员面板按钮（小且隐蔽） -->
+<button class="admin-toggle" onclick="toggleAdmin()" title="管理">⚙</button>
+
+<!-- 管理员面板 -->
+<div class="admin-panel hidden" id="admin-panel">
+  <div class="admin-box">
+    <h3>⚙ 管理网站</h3>
+    <div id="site-list"></div>
+    <h3 style="margin-top:18px">➕ 添加新网站</h3>
+    <label>网站名称</label>
+    <input id="new-name" type="text" placeholder="例：爱奇艺、腾讯视频…">
+    <label>网址</label>
+    <input id="new-url" type="url" placeholder="https://…">
+    <label>分类</label>
+    <select id="new-cat">
+      <option>国产剧</option><option>美剧</option><option>韩剧</option>
+      <option>日剧</option><option>动漫</option><option>综艺</option>
+      <option>电影</option><option>其他</option>
+    </select>
+    <label>简短说明</label>
+    <input id="new-desc" type="text" placeholder="例：免费高清、需注册…">
+    <button class="btn-save" style="width:100%" onclick="addSite()">添加到导航</button>
+    <button class="btn-close-ad" style="width:100%;margin-top:8px" onclick="toggleAdmin()">关闭管理面板</button>
+  </div>
+</div>
+
+<script>
+// ── Default sites ──
+const DEFAULTS = [
+  {id:1,name:"B站 bilibili",url:"https://www.bilibili.com",cat:"动漫",desc:"番剧、国创、纪录片",icon:"📺",color:"#fb7299"},
+  {id:2,name:"腾讯视频",url:"https://v.qq.com",cat:"国产剧",desc:"热门电视剧、综艺",icon:"🎬",color:"#12b7f5"},
+  {id:3,name:"爱奇艺",url:"https://www.iqiyi.com",cat:"国产剧",desc:"海量电视剧、电影",icon:"🎥",color:"#04c160"},
+  {id:4,name:"优酷",url:"https://www.youku.com",cat:"国产剧",desc:"经典剧集、独播剧",icon:"📀",color:"#00a3e0"},
+  {id:5,name:"芒果TV",url:"https://www.mgtv.com",cat:"综艺",desc:"综艺节目、自制剧",icon:"🥭",color:"#ff7a45"},
+  {id:6,name:"韩剧TV",url:"https://www.hanjutv.com",cat:"韩剧",desc:"韩剧、韩综追更",icon:"🇰🇷",color:"#fa541c"},
+  {id:7,name:"CCTV节目官网",url:"https://tv.cctv.com",cat:"国产剧",desc:"央视出品、纪录片",icon:"📡",color:"#cf1322"},
+  {id:8,name:"1905电影网",url:"https://www.1905.com",cat:"电影",desc:"电影频道官方",icon:"🎞",color:"#d4380d"}
+];
+
+const CATS = ["全部","国产剧","美剧","韩剧","日剧","动漫","综艺","电影","其他"];
+const CAT_COLORS = {"国产剧":"#e84855","美剧":"#1677ff","韩剧":"#fa8c16","日剧":"#52c41a","动漫":"#722ed1","综艺":"#eb2f96","电影":"#13c2c2","其他":"#666"};
+const SK = "tvnav_sites";
+let sites = JSON.parse(localStorage.getItem(SK) || "null") || DEFAULTS;
+let curCat = "全部";
+
+function save(){localStorage.setItem(SK,JSON.stringify(sites))}
+function toast(m){
+  const t=document.createElement("div");t.className="toast";t.textContent=m;
+  document.body.appendChild(t);setTimeout(()=>t.remove(),2200);
+}
+
+// ── Render ──
+function render(){
+  // Tabs
+  document.getElementById("tabs").innerHTML = CATS.map(c =>
+    `<button class="tab${c===curCat?' active':''}" onclick="switchCat('${c}')">${c}</button>`
+  ).join("");
+
+  // Grid
+  const grid = document.getElementById("grid");
+  let data = sites.filter(s => curCat==="全部" || s.cat===curCat);
+  if(data.length===0){
+    grid.innerHTML = `<div class="empty"><span class="icon">📭</span>这个分类还没有网站<br>点左下角 ⚙ 添加吧</div>`;return;
+  }
+  grid.innerHTML = data.map(s => {
+    const bg = s.color || CAT_COLORS[s.cat] || "#666";
+    return `<a class="card" href="${s.url}" target="_blank" rel="noopener">
+      <div class="card-icon" style="background:${bg}20;color:${bg}">${s.icon||'🌐'}</div>
+      <div class="card-body">
+        <div class="card-name">${s.name}</div>
+        <div class="card-desc">${s.desc||'点击打开网站'}</div>
+      </div>
+      <span class="card-arrow">›</span>
+    </a>`;
+  }).join("");
+}
+
+function switchCat(c){curCat=c;render()}
+
+// ── Admin ──
+function toggleAdmin(){
+  document.getElementById("admin-panel").classList.toggle("hidden");
+  if(!document.getElementById("admin-panel").classList.contains("hidden")) renderSiteList();
+}
+
+function renderSiteList(){
+  document.getElementById("site-list").innerHTML = sites.map(s =>
+    `<div class="site-row">
+      <span>${s.icon||'🌐'} ${s.name} <small style="color:#999">· ${s.cat}</small></span>
+      <button class="del-btn" onclick="delSite(${s.id})">删除</button>
+    </div>`
+  ).join("") || '<p style="color:#999;font-size:15px">还没有添加网站</p>';
+}
+
+function delSite(id){
+  if(!confirm("确定删除这个网站？"))return;
+  sites=sites.filter(s=>s.id!==id);save();render();renderSiteList();toast("已删除");
+}
+
+function addSite(){
+  const name=document.getElementById("new-name").value.trim();
+  const url=document.getElementById("new-url").value.trim();
+  if(!name||!url){toast("请填写名称和网址");return}
+  if(!url.startsWith("http")){toast("网址需要以 https:// 开头");return}
+  sites.push({
+    id:Date.now(),
+    name,
+    url,
+    cat:document.getElementById("new-cat").value,
+    desc:document.getElementById("new-desc").value.trim()||"点击打开网站",
+    icon:"🌐"
+  });
+  save();render();renderSiteList();
+  document.getElementById("new-name").value="";
+  document.getElementById("new-url").value="";
+  document.getElementById("new-desc").value="";
+  toast("已添加 ✅");
+}
+
+// ── Close admin on overlay click ──
+document.getElementById("admin-panel").addEventListener("click",e=>{if(e.target===e.currentTarget)toggleAdmin()});
+
+// ── Init ──
+render();
+
+// ── Service Worker ──
+if("serviceWorker" in navigator){navigator.serviceWorker.register("sw.js").catch(()=>{})}
+</script>
+</body>
+</html>
