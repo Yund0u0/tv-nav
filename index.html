@@ -136,6 +136,30 @@
   @keyframes toastIn{from{opacity:0;transform:translateX(-50%) translateY(-10px)}to{opacity:1;transform:translateX(-50%) translateY(0)}}
   @keyframes toastOut{from{opacity:1}to{opacity:0}}
 
+  /* ── History ── */
+  .history-header{
+    display:flex;align-items:center;justify-content:space-between;
+    padding:0 0 10px
+  }
+  .history-header h3{font-size:18px;font-weight:700;color:#222}
+  .history-clear{
+    background:none;border:none;font-size:15px;color:#999;cursor:pointer;
+    padding:6px 12px;border-radius:8px;font-family:inherit
+  }
+  .history-clear:active{background:#f0f0f0}
+  .history-item{
+    display:flex;align-items:center;gap:12px;padding:14px 12px;
+    border-radius:12px;cursor:pointer;text-decoration:none;color:inherit;
+    background:#fff;margin-bottom:8px;box-shadow:0 1px 6px rgba(0,0,0,.04);
+    transition:all .15s
+  }
+  .history-item:active{transform:scale(.98);background:#f9f9f9}
+  .history-icon{font-size:28px;flex-shrink:0}
+  .history-info{flex:1;min-width:0}
+  .history-name{font-size:18px;font-weight:700;color:#222}
+  .history-time{font-size:14px;color:#999;margin-top:2px}
+  .history-arrow{font-size:20px;color:#ccc}
+
   /* Category colors */
   .cat-国产剧{background:#fff0f0;color:#e84855}
   .cat-美剧{background:#f0f5ff;color:#1677ff}
@@ -200,13 +224,30 @@ const DEFAULTS = [
   {id:8,name:"1905电影网",url:"https://www.1905.com",cat:"电影",desc:"电影频道官方",icon:"🎞",color:"#d4380d"}
 ];
 
-const CATS = ["全部","国产剧","美剧","韩剧","日剧","动漫","综艺","电影","其他"];
+const CATS = ["全部","国产剧","美剧","韩剧","日剧","动漫","综艺","电影","其他","📋 历史"];
+const HISTORY_SK = "tvnav_history";
+let history = JSON.parse(localStorage.getItem(HISTORY_SK) || "[]");
 const CAT_COLORS = {"国产剧":"#e84855","美剧":"#1677ff","韩剧":"#fa8c16","日剧":"#52c41a","动漫":"#722ed1","综艺":"#eb2f96","电影":"#13c2c2","其他":"#666"};
 const SK = "tvnav_sites";
 let sites = JSON.parse(localStorage.getItem(SK) || "null") || DEFAULTS;
 let curCat = "全部";
 
 function save(){localStorage.setItem(SK,JSON.stringify(sites))}
+function saveHistory(){localStorage.setItem(HISTORY_SK,JSON.stringify(history))}
+function timeAgo(ts){
+  const diff=Math.floor((Date.now()-ts)/1000);
+  if(diff<60)return "刚刚";
+  if(diff<3600)return Math.floor(diff/60)+"分钟前";
+  if(diff<86400)return Math.floor(diff/3600)+"小时前";
+  const d=new Date(ts);
+  return d.getMonth()+1+"月"+d.getDate()+"日 "+d.getHours().toString().padStart(3,"\u2007").replace(" ","").padStart(2,"0")+":"+d.getMinutes().toString().padStart(2,"0");
+}
+function recordHistory(site){
+  history=history.filter(h=>h.url!==site.url);
+  history.unshift({name:site.name,url:site.url,icon:site.icon||"🌐",color:site.color||"#666",ts:Date.now()});
+  if(history.length>20)history=history.slice(0,20);
+  saveHistory();
+}
 function toast(m){
   const t=document.createElement("div");t.className="toast";t.textContent=m;
   document.body.appendChild(t);setTimeout(()=>t.remove(),2200);
@@ -219,15 +260,39 @@ function render(){
     `<button class="tab${c===curCat?' active':''}" onclick="switchCat('${c}')">${c}</button>`
   ).join("");
 
-  // Grid
   const grid = document.getElementById("grid");
+
+  // ── History tab ──
+  if(curCat==="📋 历史"){
+    if(history.length===0){
+      grid.innerHTML = `<div class="empty"><span class="icon">📋</span>还没有浏览记录<br>点一个网站就会出现在这里</div>`;return;
+    }
+    grid.innerHTML = `
+      <div class="history-header">
+        <h3>最近看过 (${history.length})</h3>
+        <button class="history-clear" onclick="clearHistory()">清空</button>
+      </div>
+      ${history.map(h=>`
+        <a class="history-item" href="${h.url}" target="_blank" rel="noopener" onclick="recordHistory({name:'${h.name.replace(/'/g,"\\'")}',url:'${h.url}',icon:'${h.icon}'})">
+          <span class="history-icon">${h.icon}</span>
+          <div class="history-info">
+            <div class="history-name">${h.name}</div>
+            <div class="history-time">🕐 ${timeAgo(h.ts)}</div>
+          </div>
+          <span class="history-arrow">›</span>
+        </a>
+      `).join("")}`;
+    return;
+  }
+
+  // ── Site Cards ──
   let data = sites.filter(s => curCat==="全部" || s.cat===curCat);
   if(data.length===0){
     grid.innerHTML = `<div class="empty"><span class="icon">📭</span>这个分类还没有网站<br>点左下角 ⚙ 添加吧</div>`;return;
   }
   grid.innerHTML = data.map(s => {
     const bg = s.color || CAT_COLORS[s.cat] || "#666";
-    return `<a class="card" href="${s.url}" target="_blank" rel="noopener">
+    return `<a class="card" href="${s.url}" target="_blank" rel="noopener" onclick="recordHistory({name:'${s.name.replace(/'/g,"\\'")}',url:'${s.url}',icon:'${s.icon||'🌐'}',color:'${bg}'})">
       <div class="card-icon" style="background:${bg}20;color:${bg}">${s.icon||'🌐'}</div>
       <div class="card-body">
         <div class="card-name">${s.name}</div>
