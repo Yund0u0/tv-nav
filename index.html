@@ -159,6 +159,35 @@
   .history-name{font-size:18px;font-weight:700;color:#222}
   .history-time{font-size:14px;color:#999;margin-top:2px}
   .history-arrow{font-size:20px;color:#ccc}
+  .history-note{font-size:15px;color:#e84855;font-weight:600;margin-top:2px}
+
+  /* ── Note Popup ── */
+  .note-overlay{
+    position:fixed;inset:0;background:rgba(0,0,0,.5);z-index:250;
+    display:flex;align-items:center;justify-content:center;animation:fadeIn .2s
+  }
+  .note-overlay.hidden{display:none}
+  .note-box{
+    background:#fff;border-radius:20px;padding:24px 20px;
+    width:calc(100% - 40px);max-width:380px;animation:scaleIn .2s ease-out
+  }
+  .note-box h3{font-size:20px;font-weight:800;margin-bottom:6px}
+  .note-box p{font-size:15px;color:#888;margin-bottom:14px}
+  .note-box input{
+    width:100%;padding:14px 16px;border-radius:14px;border:2px solid #e8e8e8;
+    font-size:18px;background:#fafafa;outline:none;font-family:inherit;
+    margin-bottom:16px
+  }
+  .note-box input:focus{border-color:#e84855;background:#fff}
+  .note-btns{display:flex;gap:8px}
+  .note-btns button{
+    flex:1;padding:14px 0;border-radius:14px;border:none;
+    font-size:16px;font-weight:700;cursor:pointer;font-family:inherit
+  }
+  .btn-skip{background:#f5f5f5;color:#888}
+  .btn-save-note{background:#e84855;color:#fff}
+  .btn-save-note:active{background:#d13542}
+  .btn-skip:active{background:#e8e8e8}
 
   /* Category colors */
   .cat-国产剧{background:#fff0f0;color:#e84855}
@@ -185,6 +214,19 @@
 
 <!-- 管理员面板按钮（小且隐蔽） -->
 <button class="admin-toggle" onclick="toggleAdmin()" title="管理">⚙</button>
+
+<!-- 备注弹窗 -->
+<div class="note-overlay hidden" id="note-overlay">
+  <div class="note-box">
+    <h3>📝 在看什么剧？</h3>
+    <p>记下来下次就知道看到哪了</p>
+    <input id="note-input" type="text" placeholder="例：甄嬛传 第15集" autocomplete="off" enterkeyhint="done">
+    <div class="note-btns">
+      <button class="btn-skip" onclick="openSite('skip')">直接打开</button>
+      <button class="btn-save-note" onclick="openSite('save')">记下并打开</button>
+    </div>
+  </div>
+</div>
 
 <!-- 管理员面板 -->
 <div class="admin-panel hidden" id="admin-panel">
@@ -231,6 +273,8 @@ const CAT_COLORS = {"国产剧":"#e84855","美剧":"#1677ff","韩剧":"#fa8c16",
 const SK = "tvnav_sites";
 let sites = JSON.parse(localStorage.getItem(SK) || "null") || DEFAULTS;
 let curCat = "全部";
+let pendingSiteUrl = "";
+let pendingSiteData = {};
 
 function save(){localStorage.setItem(SK,JSON.stringify(sites))}
 function saveHistory(){localStorage.setItem(HISTORY_SK,JSON.stringify(history))}
@@ -240,14 +284,32 @@ function timeAgo(ts){
   if(diff<3600)return Math.floor(diff/60)+"分钟前";
   if(diff<86400)return Math.floor(diff/3600)+"小时前";
   const d=new Date(ts);
-  return d.getMonth()+1+"月"+d.getDate()+"日 "+d.getHours().toString().padStart(3,"\u2007").replace(" ","").padStart(2,"0")+":"+d.getMinutes().toString().padStart(2,"0");
+  return d.getMonth()+1+"月"+d.getDate()+"日 "+String(d.getHours()).padStart(2,"0")+":"+String(d.getMinutes()).padStart(2,"0");
 }
-function recordHistory(site){
+function recordHistory(site, note){
   history=history.filter(h=>h.url!==site.url);
-  history.unshift({name:site.name,url:site.url,icon:site.icon||"🌐",color:site.color||"#666",ts:Date.now()});
+  history.unshift({name:site.name,url:site.url,icon:site.icon||"🌐",color:site.color||"#666",note:note||"",ts:Date.now()});
   if(history.length>20)history=history.slice(0,20);
   saveHistory();
 }
+
+// ── Note Popup ──
+function openNotePopup(site){
+  pendingSiteUrl = site.url;
+  pendingSiteData = site;
+  document.getElementById("note-overlay").classList.remove("hidden");
+  document.getElementById("note-input").value = site.existingNote || "";
+  setTimeout(()=>document.getElementById("note-input").focus(),200);
+}
+function openSite(action){
+  const note = document.getElementById("note-input").value.trim();
+  document.getElementById("note-overlay").classList.add("hidden");
+  if(action==="save" && note) recordHistory(pendingSiteData, note);
+  else if(action==="skip") recordHistory(pendingSiteData, "");
+  window.open(pendingSiteUrl, "_blank");
+}
+document.getElementById("note-overlay").addEventListener("click",e=>{if(e.target===e.currentTarget)document.getElementById("note-overlay").classList.add("hidden")});
+function clearHistory(){if(confirm("确定清空所有历史记录？")){history=[];saveHistory();render()}}
 function toast(m){
   const t=document.createElement("div");t.className="toast";t.textContent=m;
   document.body.appendChild(t);setTimeout(()=>t.remove(),2200);
@@ -273,14 +335,14 @@ function render(){
         <button class="history-clear" onclick="clearHistory()">清空</button>
       </div>
       ${history.map(h=>`
-        <a class="history-item" href="${h.url}" target="_blank" rel="noopener" onclick="recordHistory({name:'${h.name.replace(/'/g,"\\'")}',url:'${h.url}',icon:'${h.icon}'})">
-          <span class="history-icon">${h.icon}</span>
+        <div class="history-item" onclick="openNotePopup({name:'${h.name.replace(/'/g,"\\'")}',url:'${h.url}',icon:'${h.icon||'🌐'}',color:'${h.color||"#666"}',existingNote:'${(h.note||"").replace(/'/g,"\\'")}'})">
+          <span class="history-icon">${h.icon||'🌐'}</span>
           <div class="history-info">
-            <div class="history-name">${h.name}</div>
+            <div class="history-name">${h.name}${h.note?` <span class="history-note">· ${h.note.replace(/</g,"&lt;")}</span>`:""}</div>
             <div class="history-time">🕐 ${timeAgo(h.ts)}</div>
           </div>
           <span class="history-arrow">›</span>
-        </a>
+        </div>
       `).join("")}`;
     return;
   }
@@ -292,14 +354,14 @@ function render(){
   }
   grid.innerHTML = data.map(s => {
     const bg = s.color || CAT_COLORS[s.cat] || "#666";
-    return `<a class="card" href="${s.url}" target="_blank" rel="noopener" onclick="recordHistory({name:'${s.name.replace(/'/g,"\\'")}',url:'${s.url}',icon:'${s.icon||'🌐'}',color:'${bg}'})">
+    return `<div class="card" onclick="openNotePopup({name:'${s.name.replace(/'/g,"\\'")}',url:'${s.url}',icon:'${s.icon||'🌐'}',color:'${bg}'})">
       <div class="card-icon" style="background:${bg}20;color:${bg}">${s.icon||'🌐'}</div>
       <div class="card-body">
         <div class="card-name">${s.name}</div>
         <div class="card-desc">${s.desc||'点击打开网站'}</div>
       </div>
       <span class="card-arrow">›</span>
-    </a>`;
+    </div>`;
   }).join("");
 }
 
